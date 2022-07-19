@@ -55,4 +55,7 @@ dependencies {
     kapt 'com.github.bumptech.glide:compiler:4.13.2'
     implementation 'jp.wasabeef:glide-transformations:4.0.0'
 
+    implementation("androidx.viewpager2:viewpager2:1.0.0")
+
+    implementation 'me.relex:circleindicator:2.1.6'
 }

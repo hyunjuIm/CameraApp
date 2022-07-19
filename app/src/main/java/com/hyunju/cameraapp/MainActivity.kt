@@ -1,6 +1,7 @@
 package com.hyunju.cameraapp
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -9,15 +10,20 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.View
 import android.widget.Toast
 import androidx.camera.core.*
 import androidx.camera.core.ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
 import androidx.camera.core.ImageCapture.FLASH_MODE_AUTO
+import androidx.camera.core.impl.ImageOutputConfig
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.hyunju.cameraapp.databinding.ActivityMainBinding
+import com.hyunju.cameraapp.extensions.loadCenterCrop
 import com.hyunju.cameraapp.util.PathUtil
 import java.io.File
 import java.io.FileNotFoundException
@@ -48,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private var displayId: Int = -1
 
     private var camera: Camera? = null
+    private var root: View? = null
 
     private var isCapturing: Boolean = false
 
@@ -56,17 +63,24 @@ class MainActivity : AppCompatActivity() {
 
         override fun onDisplayRemoved(displayId: Int) = Unit
 
+        @SuppressLint("RestrictedApi")
         override fun onDisplayChanged(displayId: Int) {
             if (this@MainActivity.displayId == displayId) {
-
+                if (::imageCapture.isInitialized && root != null) {
+                    imageCapture.targetRotation =
+                        root?.display?.rotation ?: ImageOutputConfig.INVALID_ROTATION
+                }
             }
         }
 
     }
 
+    private var uriList = mutableListOf<Uri>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
+        root = binding.root
         setContentView(binding.root)
         if (allPermissionsGranted()) {
             startCamera(binding.viewFinder)
@@ -145,6 +159,10 @@ class MainActivity : AppCompatActivity() {
                     arrayOf("image/jpeg"),
                     null
                 )
+                Handler(Looper.getMainLooper()).post {
+                    binding.previewImageVIew.loadCenterCrop(url = it.toString(), corner = 4f)
+                }
+                uriList.add(it)
                 false
             } catch (e: Exception) {
                 e.printStackTrace()

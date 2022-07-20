@@ -64,10 +64,7 @@ class MainActivity : AppCompatActivity() {
 
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) = Unit
-
         override fun onDisplayRemoved(displayId: Int) = Unit
-
-        @SuppressLint("RestrictedApi")
         override fun onDisplayChanged(displayId: Int) {
             if (this@MainActivity.displayId == displayId) {
                 if (::imageCapture.isInitialized && root != null) {
@@ -83,8 +80,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
-        root = binding.root
         setContentView(binding.root)
+        root = binding.root
         if (allPermissionsGranted()) {
             startCamera(binding.viewFinder)
         } else {
@@ -102,19 +99,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun startCamera(viewFinder: PreviewView) {
         displayManager.registerDisplayListener(displayListener, null)
+
         cameraExecutor = Executors.newSingleThreadExecutor()
+
         viewFinder.postDelayed({
             displayId = viewFinder.display.displayId
+            bindCameraUseCase()
         }, 10)
     }
 
     private fun bindCameraUseCase() = with(binding) {
-        val rotation = viewFinder.display.rotation
+        val rotation = viewFinder.display.rotation // 회전 값 설정
         val cameraSelector =
             CameraSelector.Builder().requireLensFacing(LENS_FACING).build() // 카메라 설정(후면)
 
-        // 매개변수 중에 Executor가 따로 설정되어있지 않으면 Main Thread에서 SurfaceProvider를 제공한다.
-        // 만약 null 값으로 Provider를 제거하면 카메라는 Preview 객체에서 이미지를 만드는 것을 멈춘다.
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
             val preview = Preview.Builder().apply {
@@ -122,16 +120,17 @@ class MainActivity : AppCompatActivity() {
                 setTargetRotation(rotation)
             }.build()
 
-            val imageCaptureBuilder = ImageCapture.Builder()
-                .setCaptureMode(CAPTURE_MODE_MINIMIZE_LATENCY) // 지연 최소화
+            // imageCapture Init
+            val builder = ImageCapture.Builder()
+                .setCaptureMode(CAPTURE_MODE_MINIMIZE_LATENCY)
                 .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                 .setTargetRotation(rotation)
                 .setFlashMode(FLASH_MODE_AUTO)
 
-            imageCapture = imageCaptureBuilder.build()
+            imageCapture = builder.build()
 
             try {
-                cameraProvider.unbindAll() // 기존에 바인딩 되어있는 카메라는 해제
+                cameraProvider.unbindAll() // 기존에 바인딩 되어 있는 카메라는 해제해주어야 함
                 camera = cameraProvider.bindToLifecycle(
                     this@MainActivity, cameraSelector, preview, imageCapture
                 )
@@ -143,7 +142,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-        }, cameraExecutor)
+        }, cameraMainExecutor)
     }
 
     @SuppressLint("ClickableViewAccessibility")
